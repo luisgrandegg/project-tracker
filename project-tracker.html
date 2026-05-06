@@ -1,0 +1,3464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Prefab · Project Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=DM+Sans:wght@300..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #f6f1e8;
+    --bg-card: #fdfaf3;
+    --bg-card-hover: #faf5eb;
+    --ink: #1a1814;
+    --ink-soft: #4a453d;
+    --ink-muted: #8a8278;
+    --border: #e8e0cf;
+    --border-strong: #d4c8af;
+    --accent: #b85940;
+    --accent-soft: #d97560;
+    --accent-bg: rgba(184, 89, 64, 0.08);
+
+    --s-plan-bg: #ebe5d6;
+    --s-plan-fg: #6b5f48;
+    --s-todo-bg: #d9e3ec;
+    --s-todo-fg: #2c4f6e;
+    --s-progress-bg: #f4e0b8;
+    --s-progress-fg: #7a5818;
+    --s-action-bg: #f0c8be;
+    --s-action-fg: #963d28;
+    --s-done-bg: #cfdcc8;
+    --s-done-fg: #4a6238;
+
+    --shadow-sm: 0 1px 2px rgba(26, 24, 20, 0.04);
+    --shadow: 0 4px 12px rgba(26, 24, 20, 0.06), 0 1px 3px rgba(26, 24, 20, 0.04);
+    --shadow-lg: 0 12px 32px rgba(26, 24, 20, 0.14), 0 4px 12px rgba(26, 24, 20, 0.08);
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 18% 8%, rgba(184, 89, 64, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 82% 92%, rgba(184, 89, 64, 0.03) 0%, transparent 40%);
+  }
+
+  .app {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  /* Header */
+  header.app-header {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .header-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+  }
+
+  .header-title em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+  }
+
+  .header-sub {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 1.85rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ink);
+    font-variation-settings: "opsz" 144;
+  }
+
+  .stat-value.warn { color: var(--accent); }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-muted);
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-muted);
+    margin-right: 8px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: 500;
+  }
+
+  .pill:hover {
+    background: var(--bg-card);
+    border-color: var(--ink-muted);
+  }
+
+  .pill.active {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+
+  .pill-count {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 4px;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover {
+    background: var(--accent);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--border-strong);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+
+  .btn-danger:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn-icon {
+    width: 1em;
+    height: 1em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Items */
+  .items-wrap {
+    margin-top: 28px;
+  }
+
+  .items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .item-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+  }
+
+  .item-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+  }
+
+  .item-card.expanded {
+    border-color: var(--ink-muted);
+    box-shadow: var(--shadow);
+  }
+
+  .item-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 16px;
+    padding: 16px 20px;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .item-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+    font-variation-settings: "opsz" 36;
+  }
+
+  .item-meta {
+    display: flex;
+    gap: 14px;
+    margin-top: 5px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-wrap: wrap;
+  }
+
+  .item-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .item-meta-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--ink-muted);
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .status-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .status-plan { background: var(--s-plan-bg); color: var(--s-plan-fg); }
+  .status-todo { background: var(--s-todo-bg); color: var(--s-todo-fg); }
+  .status-progress { background: var(--s-progress-bg); color: var(--s-progress-fg); }
+  .status-action { background: var(--s-action-bg); color: var(--s-action-fg); }
+  .status-done { background: var(--s-done-bg); color: var(--s-done-fg); }
+
+  .time-pill {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 3px;
+    white-space: nowrap;
+    background: var(--bg);
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+  }
+
+  .time-pill.urgent {
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-color: rgba(184, 89, 64, 0.4);
+  }
+
+  .time-pill.soon {
+    background: rgba(184, 138, 24, 0.1);
+    color: #8a6018;
+    border-color: rgba(184, 138, 24, 0.3);
+  }
+
+  .time-pill.done {
+    background: var(--s-done-bg);
+    color: var(--s-done-fg);
+    border-color: transparent;
+  }
+
+  .item-toggle {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+    transition: transform 0.2s ease;
+  }
+
+  .item-card.expanded .item-toggle {
+    transform: rotate(180deg);
+  }
+
+  /* Expanded body */
+  .item-body {
+    padding: 0 20px 20px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .item-description {
+    padding: 16px 0;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  .item-description.empty {
+    color: var(--ink-muted);
+    font-style: italic;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-muted);
+    margin: 16px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Log */
+  .log-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .log-entry {
+    background: var(--bg);
+    border-left: 2px solid var(--border-strong);
+    padding: 10px 14px;
+    border-radius: 0 4px 4px 0;
+    transition: border-color 0.15s ease;
+  }
+
+  .log-entry:hover {
+    border-left-color: var(--accent);
+  }
+
+  .log-entry-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .log-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .log-date {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+  }
+
+  .log-content {
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .log-delete {
+    background: none;
+    border: none;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .log-entry:hover .log-delete {
+    opacity: 0.6;
+  }
+
+  .log-delete:hover {
+    opacity: 1 !important;
+    color: var(--accent);
+  }
+
+  .log-empty {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+
+  /* Log form */
+  .log-form {
+    background: var(--bg);
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px dashed var(--border-strong);
+    margin-bottom: 16px;
+  }
+
+  .log-form-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .log-form textarea {
+    width: 100%;
+    min-height: 70px;
+  }
+
+  .log-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  /* Item actions */
+  .item-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+    flex-wrap: wrap;
+  }
+
+  /* Inputs */
+  input, textarea, select {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    padding: 9px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--ink);
+    transition: border-color 0.15s ease;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+
+  textarea {
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 24, 20, 0.45);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    z-index: 100;
+    overflow-y: auto;
+  }
+
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: var(--bg-card);
+    border-radius: 8px;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: var(--shadow-lg);
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 36;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 1.4rem;
+    line-height: 1;
+    border-radius: 4px;
+  }
+
+  .modal-close:hover {
+    color: var(--ink);
+    background: var(--bg);
+  }
+
+  .modal-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-muted);
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--ink-muted);
+  }
+
+  .empty-state-icon {
+    font-family: var(--font-display);
+    font-size: 4rem;
+    margin-bottom: 12px;
+    color: var(--border-strong);
+    line-height: 1;
+  }
+
+  .empty-state-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .empty-state-text {
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+  }
+
+  /* Loading */
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.3s ease;
+    z-index: 200;
+    max-width: 90%;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .app { padding: 20px 14px 60px; }
+    .header-stats { gap: 20px; }
+    .stat-value { font-size: 1.5rem; }
+    .item-header {
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 10px;
+    }
+    .item-header > .status-badge {
+      grid-row: 2;
+      grid-column: 1;
+      justify-self: start;
+    }
+    .item-header > .time-pill {
+      grid-row: 2;
+      grid-column: 2;
+      justify-self: end;
+    }
+    .item-toggle {
+      grid-row: 1;
+      grid-column: 2;
+    }
+    .field-row { grid-template-columns: 1fr; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar > div:last-child { display: flex; gap: 8px; }
+  }
+
+  /* ============================================
+     Setup view (first-run config screen)
+     ============================================ */
+  .setup-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+  }
+
+  .setup-header {
+    margin-bottom: 36px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .setup-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
+  .setup-title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.5vw, 2.75rem);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+    font-variation-settings: "opsz" 144;
+  }
+
+  .setup-title em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+  }
+
+  .setup-lede {
+    font-size: 1rem;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    max-width: 56ch;
+  }
+
+  .setup-step {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .step-num {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--accent);
+    font-variation-settings: "opsz" 36;
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  .step-body h3 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 6px;
+    letter-spacing: -0.005em;
+    font-variation-settings: "opsz" 36;
+  }
+
+  .step-body p {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+
+  .step-body a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+  }
+
+  .step-body a:hover { color: var(--accent-soft); }
+
+  .code-block {
+    background: var(--ink);
+    color: #e8e0cf;
+    border-radius: 6px;
+    padding: 16px 18px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    overflow-x: auto;
+    position: relative;
+    white-space: pre;
+    margin-top: 8px;
+  }
+
+  .code-block .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e8e0cf;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: all 0.15s ease;
+  }
+
+  .code-block .copy-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .setup-form {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin-top: 12px;
+  }
+
+  .setup-form .field {
+    margin-bottom: 14px;
+  }
+
+  .setup-form input {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+
+  .setup-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  .setup-error {
+    background: rgba(184, 89, 64, 0.08);
+    border: 1px solid rgba(184, 89, 64, 0.3);
+    color: var(--accent);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .setup-error.show { display: block; }
+
+  .setup-foot {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    line-height: 1.55;
+  }
+
+  /* Labels */
+  .item-labels {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .label-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    line-height: 1.4;
+  }
+
+  .label-chip:hover {
+    opacity: 0.82;
+  }
+
+  .label-chip.removable {
+    cursor: default;
+    padding-right: 4px;
+  }
+
+  .label-chip-remove {
+    background: rgba(0, 0, 0, 0.13);
+    border: none;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 0;
+    font-family: var(--font-body);
+    transition: background 0.15s ease;
+  }
+
+  .label-chip-remove:hover {
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  /* Label input field (in the new/edit modal) */
+  .label-input {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    padding: 7px 9px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    background: var(--bg-card);
+    min-height: 38px;
+    cursor: text;
+    transition: border-color 0.15s ease;
+  }
+
+  .label-input:focus-within {
+    border-color: var(--ink);
+  }
+
+  .label-input input {
+    flex: 1;
+    min-width: 120px;
+    border: none;
+    padding: 4px 2px;
+    background: transparent;
+    font-size: 0.88rem;
+    color: var(--ink);
+  }
+
+  .label-input input:focus { outline: none; }
+
+  .label-suggestions {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    align-items: center;
+  }
+
+  .label-suggestions-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-muted);
+    margin-right: 2px;
+  }
+
+  .suggest-chip {
+    font-size: 0.7rem;
+    padding: 2px 9px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.15s ease;
+  }
+
+  .suggest-chip:hover {
+    border-style: solid;
+    border-color: var(--ink-muted);
+    color: var(--ink);
+    background: var(--bg);
+  }
+
+  /* View tabs (switches between List and Dashboard) */
+  .view-tabs {
+    display: inline-flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 3px;
+    margin: 4px 0 18px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .view-tab {
+    padding: 6px 18px;
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .view-tab:hover { color: var(--ink); }
+
+  .view-tab.active {
+    background: var(--ink);
+    color: var(--bg);
+  }
+
+  .view-tab svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Dashboard */
+  .dashboard-wrap {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 20px;
+    margin-top: 28px;
+  }
+
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 22px 24px;
+    transition: border-color 0.2s ease;
+  }
+
+  .chart-card:hover { border-color: var(--border-strong); }
+
+  .chart-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .chart-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    font-variation-settings: "opsz" 36;
+    color: var(--ink);
+  }
+
+  .chart-meta {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-muted);
+  }
+
+  .chart-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 76px;
+    gap: 12px;
+    align-items: center;
+    padding: 5px 6px;
+    border-radius: 4px;
+    margin: 0 -6px;
+    transition: background 0.15s ease;
+  }
+
+  .bar-row[data-action] {
+    cursor: pointer;
+  }
+
+  .bar-row[data-action]:hover {
+    background: var(--bg);
+  }
+
+  .bar-label {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+
+  .bar-row[data-action]:hover .bar-label {
+    color: var(--ink);
+  }
+
+  .bar-track {
+    height: 22px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+    min-width: 0;
+  }
+
+  .bar-fill.zero {
+    /* Show a faint dotted track when count is 0 */
+    background: transparent !important;
+  }
+
+  .bar-value {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--ink);
+    font-weight: 500;
+    text-align: right;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .bar-value-pct {
+    font-size: 0.65rem;
+    color: var(--ink-muted);
+    font-weight: 400;
+  }
+
+  .dashboard-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--ink-muted);
+  }
+
+  @media (max-width: 720px) {
+    .dashboard-wrap { grid-template-columns: 1fr; }
+    .bar-row {
+      grid-template-columns: 110px 1fr 64px;
+      gap: 8px;
+    }
+    .chart-card { padding: 18px 18px; }
+    .chart-title { font-size: 1.15rem; }
+  }
+
+  /* Timeline view */
+  .timeline-wrap {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .tl-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 22px 24px;
+    transition: border-color 0.2s ease;
+  }
+
+  .tl-card:hover { border-color: var(--border-strong); }
+
+  .tl-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tl-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    font-variation-settings: "opsz" 36;
+    color: var(--ink);
+  }
+
+  .tl-legend {
+    display: flex;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-muted);
+    flex-wrap: wrap;
+  }
+
+  .tl-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tl-legend-swatch {
+    width: 14px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  /* Expected vs Real chart */
+  .er-chart {
+    width: 100%;
+    height: 260px;
+    display: block;
+  }
+
+  .er-chart .grid-line {
+    stroke: var(--border);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+  }
+
+  .er-chart .axis-line {
+    stroke: var(--border-strong);
+    stroke-width: 1;
+  }
+
+  .er-chart .axis-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--ink-muted);
+    letter-spacing: 0.06em;
+  }
+
+  .er-chart .today-line {
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    opacity: 0.6;
+  }
+
+  .er-chart .today-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    fill: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .er-chart .line-expected {
+    fill: none;
+    stroke: var(--ink-muted);
+    stroke-width: 1.6;
+    stroke-dasharray: 5 3;
+  }
+
+  .er-chart .line-real {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+  }
+
+  .er-chart .endpoint {
+    fill: var(--accent);
+  }
+
+  /* Gantt */
+  .gantt {
+    position: relative;
+  }
+
+  .gantt-axis {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    align-items: end;
+  }
+
+  .gantt-axis-spacer {
+    /* matches gantt-row-title width */
+  }
+
+  .gantt-axis-track {
+    position: relative;
+    height: 18px;
+  }
+
+  .gantt-axis-tick {
+    position: absolute;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  .gantt-rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .gantt-row {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 16px;
+    align-items: center;
+    height: 36px;
+    border-bottom: 1px dashed var(--border);
+    padding: 0 0;
+    transition: background 0.15s ease;
+  }
+
+  .gantt-row:last-child { border-bottom: none; }
+  .gantt-row:hover { background: rgba(184, 89, 64, 0.025); }
+
+  .gantt-row-title {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+
+  .gantt-row:hover .gantt-row-title { color: var(--ink); }
+
+  .gantt-row-track {
+    position: relative;
+    height: 100%;
+  }
+
+  .gantt-bar {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 18px;
+    border-radius: 3px;
+    min-width: 4px;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+
+  .gantt-bar:hover { filter: brightness(0.92); }
+
+  .gantt-bar.done { opacity: 0.6; }
+
+  .gantt-overdue {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 18px;
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(184, 89, 64, 0.5),
+      rgba(184, 89, 64, 0.5) 4px,
+      rgba(184, 89, 64, 0.7) 4px,
+      rgba(184, 89, 64, 0.7) 8px
+    );
+    border-radius: 0 3px 3px 0;
+    pointer-events: none;
+  }
+
+  .gantt-completion-tick {
+    position: absolute;
+    top: 50%;
+    width: 2px;
+    height: 26px;
+    background: #4a6238;
+    transform: translate(-50%, -50%);
+    border-radius: 1px;
+    pointer-events: none;
+  }
+
+  .gantt-today {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    background: var(--accent);
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .gantt-today::after {
+    content: 'Today';
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    background: var(--bg-card);
+    padding: 0 4px;
+    white-space: nowrap;
+  }
+
+  .gantt-empty-note {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    font-style: italic;
+  }
+
+  .timeline-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 720px) {
+    .gantt-axis,
+    .gantt-row {
+      grid-template-columns: 130px 1fr;
+      gap: 10px;
+    }
+    .gantt-row-title { font-size: 0.78rem; }
+    .tl-card { padding: 18px 16px; }
+    .er-chart { height: 220px; }
+  }
+
+  /* Sort controls */
+  .sort-group {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--bg-card);
+    height: 33px;
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+  }
+
+  .sort-group:hover {
+    border-color: var(--ink-muted);
+  }
+
+  .sort-select {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 0 8px 0 14px;
+    outline: none;
+    font-weight: 500;
+    height: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a8278' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 26px;
+  }
+
+  .sort-select:focus { outline: none; }
+
+  .sort-dir-btn {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--border);
+    width: 32px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    line-height: 1;
+  }
+
+  .sort-dir-btn:hover {
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  .sort-dir-btn.hidden {
+    display: none;
+  }
+
+  /* Connection indicator in tracker view */
+  .conn-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    transition: all 0.15s ease;
+  }
+
+  .conn-indicator:hover {
+    border-color: var(--ink-muted);
+  }
+
+  .conn-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6b9b5e;
+    box-shadow: 0 0 0 2px rgba(107, 155, 94, 0.2);
+  }
+
+  .conn-indicator.offline .conn-dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 2px rgba(184, 89, 64, 0.2);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* View switching */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  @media (max-width: 640px) {
+    .setup-wrap { padding: 32px 16px 60px; }
+    .setup-step { grid-template-columns: 28px 1fr; gap: 12px; }
+    .step-num { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+  <!-- ============================================
+       Setup view: shown when credentials aren't in localStorage
+       ============================================ -->
+  <div id="setup-view" class="view" style="display:none;">
+    <div class="setup-wrap">
+      <header class="setup-header">
+        <div class="setup-eyebrow">First-time setup</div>
+        <h1 class="setup-title">Connect to <em>Supabase</em></h1>
+        <p class="setup-lede">This tracker syncs through a Supabase project so multiple people can share the same items in real time. Paste your Project URL and the publishable / anon key below to get started.</p>
+      </header>
+
+      <div class="setup-step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Have a Supabase project ready</h3>
+          <p>If you don't already have one, sign up at <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a> (free tier is plenty) and create a new project.</p>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Run the setup SQL once</h3>
+          <p>In your Supabase dashboard go to <strong>SQL Editor → New query</strong>, paste this in, and run it. It creates the table, sets access rules, and enables real-time updates.</p>
+          <div class="code-block" id="sql-block"><button class="copy-btn" id="copy-sql">Copy</button><code id="sql-content">create table public.tracker_items (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text default '',
+  status text not null,
+  owner text not null,
+  due_date date,
+  start_date date,
+  completed_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  log jsonb default '[]'::jsonb,
+  labels text[] default '{}'
+);
+
+alter table public.tracker_items enable row level security;
+create policy "allow_anon_all" on public.tracker_items
+  for all to anon, authenticated using (true) with check (true);
+
+alter publication supabase_realtime add table public.tracker_items;</code></div>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Paste your project credentials</h3>
+          <p>In Supabase go to <strong>Project Settings → API</strong> and copy your <em>Project URL</em> and the <em>anon / publishable</em> key (not the service_role key).</p>
+          <div class="setup-form">
+            <div class="field">
+              <label for="setup-url">Project URL</label>
+              <input type="url" id="setup-url" placeholder="https://your-project.supabase.co" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="setup-key">Publishable / anon key</label>
+              <input type="text" id="setup-key" placeholder="sb_publishable_… or eyJhbGc…" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="setup-actions">
+              <button class="btn btn-primary" id="connect-btn">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                Configure
+              </button>
+              <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.1em;">
+                Stored in your browser only
+              </span>
+            </div>
+            <div class="setup-error" id="setup-error"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-foot">
+        <strong>For someone joining you later:</strong> they'll open this same page, paste the <em>same</em> Project URL and key, and click Configure — then they'll see the same tracker, with changes syncing in real time.
+      </div>
+    </div>
+  </div>
+
+  <!-- Connection error overlay -->
+  <div id="conn-error" class="view" style="display:none;">
+    <div style="max-width:520px;margin:120px auto;padding:32px 24px;text-align:center;">
+      <div style="font-family:var(--font-display);font-size:2.2rem;font-weight:400;letter-spacing:-0.02em;margin-bottom:12px;font-variation-settings:'opsz' 144;">
+        <em style="color:var(--accent);font-style:italic;font-weight:300;">Connection failed</em>
+      </div>
+      <p style="color:var(--ink-soft);font-size:0.95rem;line-height:1.55;margin-bottom:24px;" id="conn-error-msg">Could not reach Supabase.</p>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="retry-btn">
+          <svg class="btn-icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 9 8 9"/></svg>
+          Try again
+        </button>
+        <button class="btn btn-ghost" id="reconfigure-btn">
+          Reconfigure
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================
+       Tracker view: shown once connected
+       ============================================ -->
+  <div id="tracker-view" class="view">
+    <div class="app">
+      <header class="app-header">
+        <div class="header-top">
+          <div>
+            <h1 class="header-title">Casa <em>Prefab</em></h1>
+            <div class="header-sub" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <span>Project Tracker · Construcción</span>
+              <button class="conn-indicator" id="conn-indicator" title="Reconfigure Supabase credentials">
+                <span class="conn-dot"></span>
+                <span id="conn-status">Live</span>
+              </button>
+            </div>
+          </div>
+          <div class="header-stats" id="stats"></div>
+        </div>
+        <div class="view-tabs" id="view-tabs">
+          <button class="view-tab active" data-view="list" type="button">
+            <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            List
+          </button>
+          <button class="view-tab" data-view="dashboard" type="button">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+            Dashboard
+          </button>
+          <button class="view-tab" data-view="timeline" type="button">
+            <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="14" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="5" y1="18" x2="17" y2="18"/></svg>
+            Timeline
+          </button>
+        </div>
+        <div class="toolbar" id="toolbar">
+          <div class="filter-row" id="status-filters"></div>
+          <div class="filter-row" id="label-filters" style="margin-top:8px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <span class="filter-label">Sort</span>
+            <div class="sort-group">
+              <select id="sort-by" class="sort-select" aria-label="Sort by">
+                <option value="smart">Smart</option>
+                <option value="due">Due date</option>
+                <option value="status">Status</option>
+                <option value="owner">Owner</option>
+                <option value="title">Title</option>
+                <option value="created">Created</option>
+              </select>
+              <button id="sort-dir" class="sort-dir-btn" aria-label="Toggle sort direction">↑</button>
+            </div>
+            <button class="btn btn-ghost" id="owner-toggle">All owners</button>
+            <button class="btn btn-primary" id="add-btn">
+              <svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New item
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="items-wrap" id="items-list"></main>
+      <main class="dashboard-wrap" id="dashboard" style="display:none;"></main>
+      <main class="timeline-wrap" id="timeline" style="display:none;"></main>
+    </div>
+  </div>
+
+  <!-- Add/Edit modal -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">New item</h2>
+        <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="f-title">Title</label>
+          <input type="text" id="f-title" placeholder="What needs to happen?">
+        </div>
+        <div class="field">
+          <label for="f-desc">Description</label>
+          <textarea id="f-desc" placeholder="More context (optional)"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-status">Status</label>
+            <select id="f-status">
+              <option value="To plan">To plan</option>
+              <option value="To do">To do</option>
+              <option value="In progress">In progress</option>
+              <option value="Action Required">Action Required</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-owner">Owner</label>
+            <select id="f-owner">
+              <option value="Damaso">Dámaso</option>
+              <option value="Luis y Mathi">Luis y Mathi</option>
+              <option value="Colven">Colven</option>
+              <option value="Isidoro">Isidoro</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-start">Start date</label>
+            <input type="date" id="f-start">
+          </div>
+          <div class="field">
+            <label for="f-due">Due date</label>
+            <input type="date" id="f-due">
+          </div>
+        </div>
+        <div class="field">
+          <label>Labels</label>
+          <div id="label-input-container"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="modal-delete" style="display:none;">Delete</button>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+          <button class="btn btn-primary" id="modal-save">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============================================
+    // Supabase config (loaded from localStorage at startup)
+    // ============================================
+    const CRED_URL_KEY = 'tracker_supabase_url';
+    const CRED_KEY_KEY = 'tracker_supabase_key';
+
+    // Mutable so we can update them after the user completes setup
+    let SUPABASE_URL = localStorage.getItem(CRED_URL_KEY) || '';
+    let SUPABASE_KEY = localStorage.getItem(CRED_KEY_KEY) || '';
+
+    function hasCredentials() {
+      return !!(SUPABASE_URL && SUPABASE_KEY);
+    }
+
+    function saveCredentials(url, key) {
+      SUPABASE_URL = url;
+      SUPABASE_KEY = key;
+      localStorage.setItem(CRED_URL_KEY, url);
+      localStorage.setItem(CRED_KEY_KEY, key);
+    }
+
+    function clearCredentials() {
+      SUPABASE_URL = '';
+      SUPABASE_KEY = '';
+      localStorage.removeItem(CRED_URL_KEY);
+      localStorage.removeItem(CRED_KEY_KEY);
+    }
+
+    const TABLE = 'tracker_items';
+    const LEGACY_DATA_KEY = 'project_tracker_v1';
+
+    // ============================================
+    // Constants
+    // ============================================
+    const STATUSES = ['To plan', 'To do', 'In progress', 'Action Required', 'Done'];
+    const OWNERS = ['Damaso', 'Luis y Mathi', 'Colven', 'Isidoro'];
+    const OWNER_DISPLAY = {
+      'Damaso': 'Dámaso',
+      'Luis y Mathi': 'Luis y Mathi',
+      'Colven': 'Colven',
+      'Isidoro': 'Isidoro'
+    };
+    const LOG_TYPES = ['email', 'whatsapp', 'call', 'meeting', 'note'];
+
+    // Sort field definitions. 'Smart' uses our handcrafted ordering
+    // (overdue first, by due date, done last). The others use the
+    // chosen direction. STATUS_ORDER below is "by attention" — Action
+    // Required first, Done last — which is more useful than alphabetical.
+    const SORT_OPTIONS = [
+      { key: 'smart',   label: 'Smart' },
+      { key: 'due',     label: 'Due date' },
+      { key: 'status',  label: 'Status' },
+      { key: 'owner',   label: 'Owner' },
+      { key: 'title',   label: 'Title' },
+      { key: 'created', label: 'Created' }
+    ];
+    const STATUS_ORDER = {
+      'Action Required': 0,
+      'In progress':     1,
+      'To do':           2,
+      'To plan':         3,
+      'Done':            4
+    };
+    const SORT_PREF_KEY = 'tracker_sort_v1';
+    const FILTER_LABEL_KEY = 'tracker_filter_label_v1';
+    const VIEW_PREF_KEY = 'tracker_view_v1';
+
+    // Owner palette for the dashboard. Picked to harmonize with the warm
+    // earth-tone aesthetic — distinct enough to read at a glance.
+    const OWNER_COLORS = {
+      'Damaso':       '#b8956b', // tan
+      'Luis y Mathi': '#c97560', // coral (echoes the accent)
+      'Colven':       '#7a9a8a', // sage
+      'Isidoro':      '#7e8aab'  // dusty blue
+    };
+
+    // Label palette: muted earth tones to match the warm aesthetic.
+    // Each label gets a stable color via hashing — same label → same color, always.
+    const LABEL_COLORS = [
+      { bg: '#e8d5cd', fg: '#7a3f2c' }, // clay
+      { bg: '#dde3d2', fg: '#4a5e36' }, // sage
+      { bg: '#e3dac8', fg: '#6b5a36' }, // wheat
+      { bg: '#d6dde6', fg: '#3a4f68' }, // dusty blue
+      { bg: '#e3d2dc', fg: '#704562' }, // muted rose
+      { bg: '#d8d8d0', fg: '#4a4a40' }, // stone
+      { bg: '#e8dec8', fg: '#7a5818' }, // sand
+      { bg: '#d4d8c8', fg: '#52573d' }  // olive
+    ];
+
+    function labelStyle(label) {
+      let h = 0;
+      const s = (label || '').toLowerCase();
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+      const c = LABEL_COLORS[Math.abs(h) % LABEL_COLORS.length];
+      return `background:${c.bg};color:${c.fg};`;
+    }
+
+    // Distinct labels across all items, sorted alphabetically.
+    // Case-insensitive dedupe — keeps the casing of whichever item used it first.
+    function getAllLabels() {
+      const map = new Map();
+      for (const item of state.items) {
+        for (const l of (item.labels || [])) {
+          const key = l.toLowerCase();
+          if (!map.has(key)) map.set(key, l);
+        }
+      }
+      return [...map.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    }
+
+    // ============================================
+    // State
+    // ============================================
+    const state = {
+      sb: null,
+      items: [],
+      view: loadViewPref(),
+      filterStatus: 'all',
+      filterOwner: 'all',
+      filterLabel: loadFilterLabel(),
+      sort: loadSortPref(),
+      modalLabels: [],
+      expandedId: null,
+      editingId: null,
+      addingLogTo: null,
+      online: false,
+      realtimeChannel: null
+    };
+
+    function loadViewPref() {
+      try {
+        const v = localStorage.getItem(VIEW_PREF_KEY);
+        if (v === 'dashboard' || v === 'timeline') return v;
+      } catch (e) {}
+      return 'list';
+    }
+
+    function saveViewPref() {
+      try { localStorage.setItem(VIEW_PREF_KEY, state.view); } catch (e) {}
+    }
+
+    function loadFilterLabel() {
+      try { return localStorage.getItem(FILTER_LABEL_KEY) || 'all'; } catch (e) { return 'all'; }
+    }
+
+    function saveFilterLabel() {
+      try { localStorage.setItem(FILTER_LABEL_KEY, state.filterLabel); } catch (e) {}
+    }
+
+    function loadSortPref() {
+      try {
+        const v = localStorage.getItem(SORT_PREF_KEY);
+        if (v) {
+          const p = JSON.parse(v);
+          if (p && typeof p.by === 'string' && (p.dir === 'asc' || p.dir === 'desc')) return p;
+        }
+      } catch (e) {}
+      return { by: 'smart', dir: 'asc' };
+    }
+
+    function saveSortPref() {
+      try { localStorage.setItem(SORT_PREF_KEY, JSON.stringify(state.sort)); } catch (e) {}
+    }
+
+    // ============================================
+    // Helpers
+    // ============================================
+    function uid(prefix='log') {
+      return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    function statusClass(s) {
+      return ({
+        'To plan': 'status-plan', 'To do': 'status-todo',
+        'In progress': 'status-progress', 'Action Required': 'status-action',
+        'Done': 'status-done'
+      })[s] || 'status-plan';
+    }
+
+    function getTimeStatus(item) {
+      if (item.status === 'Done') return { type: 'done', label: 'Completed', className: 'done' };
+      if (!item.dueDate) return { type: 'none', label: 'No due date', className: '' };
+      const today = new Date(); today.setHours(0,0,0,0);
+      const due = new Date(item.dueDate + 'T00:00:00');
+      const diffDays = Math.round((due - today) / 86400000);
+      if (diffDays === 0) return { type: 'today', label: 'Due today', className: 'urgent', days: 0 };
+      if (diffDays > 0) return { type: 'future', label: diffDays + 'd left', className: diffDays <= 3 ? 'soon' : '', days: diffDays };
+      return { type: 'overdue', label: Math.abs(diffDays) + 'd delayed', className: 'urgent', days: Math.abs(diffDays) };
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso + 'T00:00:00');
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => t.classList.remove('show'), 2400);
+    }
+
+    // ============================================
+    // Supabase: schema mapping
+    // ============================================
+    function rowToItem(row) {
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description || '',
+        status: row.status,
+        owner: row.owner,
+        dueDate: row.due_date,
+        startDate: row.start_date,
+        completedAt: row.completed_at,
+        createdAt: row.created_at,
+        log: Array.isArray(row.log) ? row.log : [],
+        labels: Array.isArray(row.labels) ? row.labels : []
+      };
+    }
+
+    function itemToInsertRow(item) {
+      return {
+        title: item.title,
+        description: item.description || '',
+        status: item.status,
+        owner: item.owner,
+        due_date: item.dueDate || null,
+        start_date: item.startDate || null,
+        completed_at: item.completedAt || null,
+        log: item.log || [],
+        labels: item.labels || []
+      };
+    }
+
+    // ============================================
+    // Supabase: data operations
+    // ============================================
+    async function fetchItems() {
+      const { data, error } = await state.sb
+        .from(TABLE).select('*').order('created_at', { ascending: true });
+      if (error) throw error;
+      state.items = (data || []).map(rowToItem);
+    }
+
+    async function createItemRemote(item) {
+      const { data, error } = await state.sb
+        .from(TABLE).insert([itemToInsertRow(item)]).select().single();
+      if (error) throw error;
+      return rowToItem(data);
+    }
+
+    async function updateItemRemote(id, patch) {
+      const row = { updated_at: new Date().toISOString() };
+      if ('title' in patch)       row.title = patch.title;
+      if ('description' in patch) row.description = patch.description || '';
+      if ('status' in patch)      row.status = patch.status;
+      if ('owner' in patch)       row.owner = patch.owner;
+      if ('dueDate' in patch)     row.due_date = patch.dueDate || null;
+      if ('startDate' in patch)   row.start_date = patch.startDate || null;
+      if ('completedAt' in patch) row.completed_at = patch.completedAt || null;
+      if ('log' in patch)         row.log = patch.log || [];
+      if ('labels' in patch)      row.labels = patch.labels || [];
+      const { data, error } = await state.sb
+        .from(TABLE).update(row).eq('id', id).select().single();
+      if (error) throw error;
+      return rowToItem(data);
+    }
+
+    async function deleteItemRemote(id) {
+      const { error } = await state.sb.from(TABLE).delete().eq('id', id);
+      if (error) throw error;
+    }
+
+    // ============================================
+    // Supabase: connect & realtime
+    // ============================================
+    function buildClient(url, key) {
+      return window.supabase.createClient(url, key, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+      });
+    }
+
+    async function testConnection(client) {
+      const { error } = await client.from(TABLE).select('id').limit(1);
+      if (error) {
+        if (/relation .* does not exist/i.test(error.message)) {
+          throw new Error('Table not found. The setup SQL needs to be run in Supabase first.');
+        }
+        if (/Invalid API key|JWT|invalid|unauthorized/i.test(error.message)) {
+          throw new Error('Invalid API key. Check the publishable key in the source.');
+        }
+        if (/fetch|Failed to fetch|NetworkError/i.test(error.message)) {
+          throw new Error('Could not reach Supabase. Check the project URL and your internet connection.');
+        }
+        throw new Error(error.message);
+      }
+    }
+
+    function subscribeRealtime() {
+      if (state.realtimeChannel) {
+        state.sb.removeChannel(state.realtimeChannel);
+      }
+      state.realtimeChannel = state.sb
+        .channel('tracker_items_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, async () => {
+          // Re-fetch on any change. Simple and correct; cost is negligible at this scale.
+          // Skip the re-render if the user is mid-edit so we don't yank their input.
+          if (state.editingId || state.addingLogTo) return;
+          try {
+            await fetchItems();
+            renderTracker();
+          } catch (e) {
+            console.error('Realtime refetch failed:', e);
+          }
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') setOnline(true);
+          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setOnline(false);
+        });
+    }
+
+    function setOnline(online) {
+      state.online = online;
+      const indicator = document.getElementById('conn-indicator');
+      const status = document.getElementById('conn-status');
+      if (!indicator) return;
+      if (online) {
+        indicator.classList.remove('offline');
+        status.textContent = 'Live';
+      } else {
+        indicator.classList.add('offline');
+        status.textContent = 'Reconnecting…';
+      }
+    }
+
+    // ============================================
+    // Legacy migration (silent, one-time)
+    // ============================================
+    async function loadLegacyItems() {
+      try {
+        const r = await window.storage.get(LEGACY_DATA_KEY);
+        if (r && r.value) {
+          const d = JSON.parse(r.value);
+          return Array.isArray(d.items) ? d.items : [];
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    async function clearLegacyItems() {
+      try { await window.storage.delete(LEGACY_DATA_KEY); } catch (e) {}
+    }
+
+    async function migrateLegacyIfPresent() {
+      // window.storage isn't available outside the artifact runtime — silently skip
+      if (!window.storage || typeof window.storage.get !== 'function') return 0;
+      const legacy = await loadLegacyItems();
+      if (legacy.length === 0) return 0;
+      const existingTitles = new Set(state.items.map(i => i.title.toLowerCase().trim()));
+      let migrated = 0;
+      for (const item of legacy) {
+        if (existingTitles.has((item.title || '').toLowerCase().trim())) continue;
+        try {
+          const created = await createItemRemote(item);
+          state.items.push(created);
+          migrated++;
+        } catch (e) {
+          console.error('Migration failed for item:', item.title, e);
+        }
+      }
+      await clearLegacyItems();
+      return migrated;
+    }
+
+    // ============================================
+    // Render
+    // ============================================
+    // Maps a status string to its CSS background color variable.
+    // 'Action Required' -> 'status-action' -> 'var(--s-action-bg)'
+    function statusBg(s) {
+      return `var(${statusClass(s).replace('status-', '--s-')}-bg)`;
+    }
+
+    function renderTracker() {
+      renderStats();
+      renderFilters();
+      renderLabelFilters();
+      if (state.view === 'list') renderItems();
+      else if (state.view === 'dashboard') renderDashboard();
+      else renderTimeline();
+    }
+
+    function setView(view) {
+      if (view !== 'list' && view !== 'dashboard' && view !== 'timeline') view = 'list';
+      state.view = view;
+      saveViewPref();
+      // Tab visual state
+      document.querySelectorAll('.view-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === view);
+      });
+      // Toggle which sections are visible
+      document.getElementById('toolbar').style.display     = view === 'list' ? '' : 'none';
+      document.getElementById('items-list').style.display  = view === 'list' ? '' : 'none';
+      document.getElementById('dashboard').style.display   = view === 'dashboard' ? '' : 'none';
+      document.getElementById('timeline').style.display    = view === 'timeline' ? '' : 'none';
+      if (view === 'list') renderItems();
+      else if (view === 'dashboard') renderDashboard();
+      else renderTimeline();
+    }
+
+    function renderStats() {
+      const items = state.items;
+      const overdue = items.filter(i => getTimeStatus(i).type === 'overdue').length;
+      const inProgress = items.filter(i => i.status === 'In progress').length;
+      const action = items.filter(i => i.status === 'Action Required').length;
+      const done = items.filter(i => i.status === 'Done').length;
+
+      document.getElementById('stats').innerHTML = `
+        <div class="stat"><div class="stat-value">${items.length}</div><div class="stat-label">Total</div></div>
+        <div class="stat"><div class="stat-value ${action > 0 ? 'warn' : ''}">${action}</div><div class="stat-label">Action req.</div></div>
+        <div class="stat"><div class="stat-value ${overdue > 0 ? 'warn' : ''}">${overdue}</div><div class="stat-label">Delayed</div></div>
+        <div class="stat"><div class="stat-value">${inProgress}</div><div class="stat-label">In progress</div></div>
+        <div class="stat"><div class="stat-value">${done}</div><div class="stat-label">Done</div></div>
+      `;
+    }
+
+    function renderFilters() {
+      const items = state.items;
+      const counts = { all: items.length };
+      STATUSES.forEach(s => counts[s] = items.filter(i => i.status === s).length);
+
+      const el = document.getElementById('status-filters');
+      el.innerHTML = `
+        <span class="filter-label">Status</span>
+        <button class="pill ${state.filterStatus === 'all' ? 'active' : ''}" data-status="all">All <span class="pill-count">${counts.all}</span></button>
+        ${STATUSES.map(s => `
+          <button class="pill ${state.filterStatus === s ? 'active' : ''}" data-status="${escapeHtml(s)}">
+            ${escapeHtml(s)} <span class="pill-count">${counts[s]}</span>
+          </button>
+        `).join('')}
+      `;
+      el.querySelectorAll('[data-status]').forEach(b => {
+        b.onclick = () => { state.filterStatus = b.dataset.status; renderTracker(); };
+      });
+
+      const ownerBtn = document.getElementById('owner-toggle');
+      ownerBtn.textContent = state.filterOwner === 'all' ? 'All owners' : OWNER_DISPLAY[state.filterOwner];
+      ownerBtn.onclick = cycleOwnerFilter;
+    }
+
+    function cycleOwnerFilter() {
+      const opts = ['all', ...OWNERS];
+      const i = opts.indexOf(state.filterOwner);
+      state.filterOwner = opts[(i + 1) % opts.length];
+      renderTracker();
+    }
+
+    function renderLabelFilters() {
+      const el = document.getElementById('label-filters');
+      const labels = getAllLabels();
+
+      // If the active label filter no longer exists (the last item with that
+      // label was deleted or had it removed), reset to "all" so the user
+      // doesn't end up with an empty list and a filter they can't see.
+      if (state.filterLabel !== 'all' &&
+          !labels.some(l => l.toLowerCase() === state.filterLabel.toLowerCase())) {
+        state.filterLabel = 'all';
+        saveFilterLabel();
+      }
+
+      if (labels.length === 0) {
+        el.innerHTML = '';
+        el.style.display = 'none';
+        return;
+      }
+      el.style.display = '';
+
+      const total = state.items.length;
+      el.innerHTML = `
+        <span class="filter-label">Label</span>
+        <button class="pill ${state.filterLabel === 'all' ? 'active' : ''}" data-label="all">
+          All <span class="pill-count">${total}</span>
+        </button>
+        ${labels.map(l => {
+          const count = state.items.filter(i =>
+            (i.labels || []).some(x => x.toLowerCase() === l.toLowerCase())
+          ).length;
+          const active = state.filterLabel.toLowerCase() === l.toLowerCase();
+          return `
+            <button class="pill ${active ? 'active' : ''}" data-label="${escapeHtml(l)}">
+              ${escapeHtml(l)} <span class="pill-count">${count}</span>
+            </button>`;
+        }).join('')}
+      `;
+      el.querySelectorAll('[data-label]').forEach(b => {
+        b.onclick = () => {
+          state.filterLabel = b.dataset.label;
+          saveFilterLabel();
+          renderTracker();
+        };
+      });
+    }
+
+    function compareItems(a, b) {
+      const by = state.sort.by;
+      const dir = state.sort.dir === 'desc' ? -1 : 1;
+
+      // Smart: ignore direction, use the original handcrafted ordering
+      if (by === 'smart') {
+        const aDone = a.status === 'Done', bDone = b.status === 'Done';
+        if (aDone !== bDone) return aDone ? 1 : -1;
+        const aT = getTimeStatus(a), bT = getTimeStatus(b);
+        const aOver = aT.type === 'overdue', bOver = bT.type === 'overdue';
+        if (aOver !== bOver) return aOver ? -1 : 1;
+        if (a.dueDate && !b.dueDate) return -1;
+        if (!a.dueDate && b.dueDate) return 1;
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        return 0;
+      }
+
+      if (by === 'due') {
+        // Items without a due date always go to the end, regardless of direction.
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return dir * a.dueDate.localeCompare(b.dueDate);
+      }
+
+      if (by === 'status') {
+        const aS = STATUS_ORDER[a.status] ?? 99;
+        const bS = STATUS_ORDER[b.status] ?? 99;
+        return dir * (aS - bS);
+      }
+
+      if (by === 'owner') {
+        const aO = OWNER_DISPLAY[a.owner] || a.owner || '';
+        const bO = OWNER_DISPLAY[b.owner] || b.owner || '';
+        return dir * aO.localeCompare(bO, undefined, { sensitivity: 'base' });
+      }
+
+      if (by === 'title') {
+        return dir * (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+      }
+
+      if (by === 'created') {
+        return dir * (a.createdAt || '').localeCompare(b.createdAt || '');
+      }
+
+      return 0;
+    }
+
+    function renderItems() {
+      const list = document.getElementById('items-list');
+      let items = [...state.items];
+      if (state.filterStatus !== 'all') items = items.filter(i => i.status === state.filterStatus);
+      if (state.filterOwner !== 'all') items = items.filter(i => i.owner === state.filterOwner);
+      if (state.filterLabel !== 'all') {
+        const target = state.filterLabel.toLowerCase();
+        items = items.filter(i => (i.labels || []).some(l => l.toLowerCase() === target));
+      }
+
+      items.sort(compareItems);
+
+      if (items.length === 0) {
+        const isFiltered = state.filterStatus !== 'all' || state.filterOwner !== 'all';
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">◌</div>
+            <div class="empty-state-title">${isFiltered ? 'Nothing here' : 'No items yet'}</div>
+            <div class="empty-state-text">${isFiltered ? 'Try clearing filters or' : 'Start tracking by'} adding a new item.</div>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = `<div class="items">${items.map(renderItem).join('')}</div>`;
+      attachItemHandlers();
+    }
+
+    // ============================================
+    // Dashboard
+    // ============================================
+    function renderDashboard() {
+      const el = document.getElementById('dashboard');
+      const total = state.items.length;
+
+      if (total === 0) {
+        el.innerHTML = `
+          <div class="dashboard-empty">
+            <div class="empty-state-icon">◌</div>
+            <div class="empty-state-title" style="font-family:var(--font-display);font-size:1.5rem;color:var(--ink-soft);margin-bottom:8px;font-style:italic;font-weight:400;">No data yet</div>
+            <div class="empty-state-text" style="font-size:0.9rem;">Add some items to see distributions.</div>
+          </div>`;
+        return;
+      }
+
+      // By status — kept in urgency order, action-required first
+      const statusData = STATUSES.map(s => ({
+        label: s,
+        count: state.items.filter(i => i.status === s).length,
+        color: statusBg(s),
+        action: { type: 'status', value: s }
+      }));
+
+      // By owner — sorted by count desc, then name (most-loaded owner first)
+      const ownerData = OWNERS.map(o => ({
+        label: OWNER_DISPLAY[o] || o,
+        count: state.items.filter(i => i.owner === o).length,
+        color: OWNER_COLORS[o] || '#9c9385',
+        action: { type: 'owner', value: o }
+      })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+      // By deadline — bucketed relative to today.
+      // Done items are pulled out into their own bucket so they don't pollute the
+      // overdue / due-today counts (a Done item past its date isn't really overdue).
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const weekFromNow = new Date(today.getTime() + 7 * 86400000);
+      const buckets = { overdue: 0, today: 0, thisWeek: 0, later: 0, noDate: 0, done: 0 };
+      for (const item of state.items) {
+        if (item.status === 'Done') { buckets.done++; continue; }
+        if (!item.dueDate) { buckets.noDate++; continue; }
+        const due = new Date(item.dueDate + 'T00:00:00');
+        if (due < today) buckets.overdue++;
+        else if (due.getTime() === today.getTime()) buckets.today++;
+        else if (due < weekFromNow) buckets.thisWeek++;
+        else buckets.later++;
+      }
+      const deadlineData = [
+        { label: 'Overdue',       count: buckets.overdue,  color: '#d97560' },
+        { label: 'Due today',     count: buckets.today,    color: '#e8a05a' },
+        { label: 'Due this week', count: buckets.thisWeek, color: '#d4b878' },
+        { label: 'Later',         count: buckets.later,    color: '#a3b8a8' },
+        { label: 'No due date',   count: buckets.noDate,   color: '#c4bfb3' },
+        { label: 'Completed',     count: buckets.done,     color: 'var(--s-done-bg)' }
+      ];
+
+      // By label — only render the card if any labels exist
+      const labelsList = getAllLabels();
+      const labelData = labelsList.map(l => {
+        let h = 0; const s = l.toLowerCase();
+        for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+        return {
+          label: l,
+          count: state.items.filter(i => (i.labels || []).some(x => x.toLowerCase() === l.toLowerCase())).length,
+          color: LABEL_COLORS[Math.abs(h) % LABEL_COLORS.length].bg,
+          action: { type: 'label', value: l }
+        };
+      }).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+      const cards = [
+        renderChartCard('By status', total, statusData),
+        renderChartCard('By owner', total, ownerData),
+        renderChartCard('By deadline', total, deadlineData)
+      ];
+      if (labelData.length > 0) {
+        cards.push(renderChartCard('By label', total, labelData));
+      }
+      el.innerHTML = cards.join('');
+
+      // Wire bar clicks: drill into the list view filtered by the clicked dimension.
+      // Other filters are intentionally left untouched — composable, not destructive.
+      el.querySelectorAll('.bar-row[data-action]').forEach(row => {
+        row.onclick = () => {
+          let action;
+          try { action = JSON.parse(row.dataset.action); } catch (e) { return; }
+          if (action.type === 'status') state.filterStatus = action.value;
+          else if (action.type === 'owner') state.filterOwner = action.value;
+          else if (action.type === 'label') {
+            state.filterLabel = action.value;
+            saveFilterLabel();
+          }
+          setView('list');
+        };
+      });
+    }
+
+    function renderChartCard(title, total, data) {
+      // Scale to the max count in this chart (not to total) — makes small
+      // counts visible and emphasizes relative differences. Exact value is
+      // shown numerically anyway, so no information is lost.
+      const max = Math.max(1, ...data.map(d => d.count));
+      return `
+        <section class="chart-card">
+          <div class="chart-card-header">
+            <h2 class="chart-title">${escapeHtml(title)}</h2>
+            <span class="chart-meta">${total} item${total === 1 ? '' : 's'}</span>
+          </div>
+          <div class="chart-bars">
+            ${data.map(d => {
+              const pct = total > 0 ? Math.round(d.count / total * 100) : 0;
+              const width = (d.count / max) * 100;
+              const isZero = d.count === 0;
+              const actionAttr = d.action
+                ? ` data-action='${escapeHtml(JSON.stringify(d.action))}'`
+                : '';
+              return `
+                <div class="bar-row"${actionAttr}>
+                  <div class="bar-label">${escapeHtml(d.label)}</div>
+                  <div class="bar-track">
+                    <div class="bar-fill ${isZero ? 'zero' : ''}" style="width:${width}%; background:${d.color};"></div>
+                  </div>
+                  <div class="bar-value">${d.count}<span class="bar-value-pct">${pct}%</span></div>
+                </div>`;
+            }).join('')}
+          </div>
+        </section>`;
+    }
+
+    // ============================================
+    // Timeline view
+    // ============================================
+    // Date utilities used by both charts. We work in "day-only" Date objects
+    // (midnight local time) to avoid timezone drift on cumulative comparisons.
+    function dayDate(s) {
+      // Accepts 'YYYY-MM-DD' or full ISO timestamp; returns Date at local midnight
+      if (!s) return null;
+      const datePart = s.length > 10 ? s.slice(0, 10) : s;
+      const d = new Date(datePart + 'T00:00:00');
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function dayKey(d) {
+      // YYYY-MM-DD from a Date in local time
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function renderTimeline() {
+      const root = document.getElementById('timeline');
+      if (state.items.length === 0) {
+        root.innerHTML = `
+          <div class="tl-card">
+            <div class="timeline-empty">
+              <div class="empty-state-icon" style="font-family:var(--font-display);font-size:4rem;color:var(--border-strong);line-height:1;margin-bottom:12px;">◌</div>
+              <div style="font-family:var(--font-display);font-size:1.5rem;color:var(--ink-soft);margin-bottom:8px;font-style:italic;font-weight:400;">No items to show</div>
+              <div>Add items with start/due dates to see the timeline.</div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      root.innerHTML = `
+        <section class="tl-card">
+          <div class="tl-card-header">
+            <h2 class="tl-title">Expected vs Real</h2>
+            <div class="tl-legend">
+              <span class="tl-legend-item">
+                <span class="tl-legend-swatch" style="background:var(--ink-muted);height:0;border-top:2px dashed var(--ink-muted);"></span>
+                Expected (by due date)
+              </span>
+              <span class="tl-legend-item">
+                <span class="tl-legend-swatch" style="background:var(--accent);"></span>
+                Real (completed)
+              </span>
+            </div>
+          </div>
+          <div id="er-chart-container"></div>
+        </section>
+        <section class="tl-card">
+          <div class="tl-card-header">
+            <h2 class="tl-title">Gantt</h2>
+            <div class="tl-legend">
+              <span class="tl-legend-item">
+                <span class="tl-legend-swatch" style="background:repeating-linear-gradient(45deg,rgba(184,89,64,0.5),rgba(184,89,64,0.5) 3px,rgba(184,89,64,0.7) 3px,rgba(184,89,64,0.7) 6px);height:8px;border-radius:1px;"></span>
+                Delay
+              </span>
+              <span class="tl-legend-item">
+                <span class="tl-legend-swatch" style="background:#4a6238;width:2px;height:12px;"></span>
+                Completed
+              </span>
+            </div>
+          </div>
+          <div id="gantt-container"></div>
+        </section>
+      `;
+
+      renderExpectedRealChart();
+      renderGantt();
+    }
+
+    function renderExpectedRealChart() {
+      const container = document.getElementById('er-chart-container');
+      if (!container) return;
+
+      // Build cumulative event series
+      const dueEvents = state.items
+        .filter(i => i.dueDate)
+        .map(i => i.dueDate)
+        .sort();
+      const realEvents = state.items
+        .filter(i => i.status === 'Done' && i.completedAt)
+        .map(i => i.completedAt.slice(0, 10))
+        .sort();
+
+      function cumulative(dates) {
+        const out = [];
+        let count = 0;
+        for (const d of dates) {
+          count++;
+          if (out.length && out[out.length - 1].date === d) {
+            out[out.length - 1].count = count;
+          } else {
+            out.push({ date: d, count });
+          }
+        }
+        return out;
+      }
+      const expected = cumulative(dueEvents);
+      const real = cumulative(realEvents);
+
+      if (expected.length === 0 && real.length === 0) {
+        container.innerHTML = `
+          <div class="timeline-empty" style="padding:30px 20px;">
+            Set due dates and mark items as Done to see the comparison.
+          </div>`;
+        return;
+      }
+
+      // Date range — pad each side a few days so the chart doesn't hug the edges
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const allTimes = [
+        ...expected.map(e => dayDate(e.date).getTime()),
+        ...real.map(e => dayDate(e.date).getTime()),
+        today.getTime()
+      ];
+      const minTs = Math.min(...allTimes);
+      const maxTs = Math.max(...allTimes);
+      const pad = 86400000 * 2; // 2 days
+      const t0 = minTs - pad;
+      const t1 = maxTs + pad;
+
+      // Max count for Y axis
+      const maxCount = Math.max(
+        expected.length ? expected[expected.length - 1].count : 0,
+        real.length ? real[real.length - 1].count : 0,
+        1
+      );
+
+      // Dimensions — measure container, fall back to a sensible default
+      const cw = container.clientWidth || 800;
+      const W = Math.max(360, cw);
+      const H = 260;
+      const M = { top: 20, right: 16, bottom: 36, left: 36 };
+      const innerW = W - M.left - M.right;
+      const innerH = H - M.top - M.bottom;
+
+      const xOf = ts => M.left + ((ts - t0) / (t1 - t0)) * innerW;
+      const yOf = c => M.top + innerH - (c / maxCount) * innerH;
+
+      // Step path: starts at left edge at 0, jumps up at each event date,
+      // continues horizontally to either today (real) or right edge (expected)
+      function stepPath(events, endTs) {
+        if (events.length === 0) return '';
+        let d = `M ${xOf(t0)} ${yOf(0)}`;
+        let prevCount = 0;
+        for (const e of events) {
+          const x = xOf(dayDate(e.date).getTime());
+          d += ` L ${x} ${yOf(prevCount)} L ${x} ${yOf(e.count)}`;
+          prevCount = e.count;
+        }
+        d += ` L ${xOf(endTs)} ${yOf(prevCount)}`;
+        return d;
+      }
+
+      // Y grid lines & labels — pick 4-5 ticks
+      const tickCount = Math.min(5, maxCount);
+      const yTicks = [];
+      for (let i = 0; i <= tickCount; i++) {
+        yTicks.push(Math.round((maxCount * i) / tickCount));
+      }
+      const uniqYTicks = [...new Set(yTicks)];
+
+      // X tick dates — pick ~5 evenly spaced
+      const xTickCount = 5;
+      const xTicks = [];
+      for (let i = 0; i <= xTickCount; i++) {
+        const ts = t0 + ((t1 - t0) * i) / xTickCount;
+        xTicks.push(new Date(ts));
+      }
+
+      const todayX = xOf(today.getTime());
+      const expEndTs = expected.length ? Math.max(t1 - pad/2, dayDate(expected[expected.length-1].date).getTime()) : t0;
+      const realEndTs = today.getTime(); // real line stops at today
+
+      const expEndCount = expected.length ? expected[expected.length-1].count : 0;
+      const realEndCount = real.length ? real[real.length-1].count : 0;
+
+      const fmtMonth = d => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+
+      container.innerHTML = `
+        <svg class="er-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+          <!-- Y grid lines -->
+          ${uniqYTicks.map(t => `
+            <line class="grid-line" x1="${M.left}" y1="${yOf(t)}" x2="${M.left + innerW}" y2="${yOf(t)}"/>
+            <text class="axis-label" x="${M.left - 6}" y="${yOf(t) + 3}" text-anchor="end">${t}</text>
+          `).join('')}
+
+          <!-- X axis -->
+          <line class="axis-line" x1="${M.left}" y1="${M.top + innerH}" x2="${M.left + innerW}" y2="${M.top + innerH}"/>
+          ${xTicks.map(d => `
+            <text class="axis-label" x="${xOf(d.getTime())}" y="${M.top + innerH + 16}" text-anchor="middle">${fmtMonth(d)}</text>
+          `).join('')}
+
+          <!-- Today line -->
+          ${todayX >= M.left && todayX <= M.left + innerW ? `
+            <line class="today-line" x1="${todayX}" y1="${M.top}" x2="${todayX}" y2="${M.top + innerH}"/>
+            <text class="today-label" x="${todayX}" y="${M.top - 5}" text-anchor="middle">Today</text>
+          ` : ''}
+
+          <!-- Expected line -->
+          ${expected.length ? `<path class="line-expected" d="${stepPath(expected, expEndTs)}"/>` : ''}
+
+          <!-- Real line -->
+          ${real.length ? `<path class="line-real" d="${stepPath(real, realEndTs)}"/>` : ''}
+
+          <!-- Endpoint dot for real (so you can see where 'now' is in the real series) -->
+          ${real.length ? `<circle class="endpoint" cx="${xOf(realEndTs)}" cy="${yOf(realEndCount)}" r="3.5"/>` : ''}
+        </svg>
+      `;
+    }
+
+    function renderGantt() {
+      const container = document.getElementById('gantt-container');
+      if (!container) return;
+
+      // Each item needs a start and end. Gantt only includes items with a due date —
+      // a bar without an endpoint isn't a Gantt bar. Items missing due dates are
+      // counted at the bottom so the user knows they're not shown.
+      const itemsWithDue = state.items.filter(i => i.dueDate);
+      const itemsWithoutDue = state.items.length - itemsWithDue.length;
+
+      if (itemsWithDue.length === 0) {
+        container.innerHTML = `
+          <div class="timeline-empty" style="padding:30px 20px;">
+            No items have a due date yet. Add due dates to see the Gantt.
+          </div>`;
+        return;
+      }
+
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+
+      // For each, compute start (startDate, or createdAt as fallback) and end
+      const rows = itemsWithDue.map(i => {
+        const start = dayDate(i.startDate) || dayDate(i.createdAt) || dayDate(i.dueDate);
+        const due = dayDate(i.dueDate);
+        const completed = dayDate(i.completedAt);
+        const isOverdue = i.status !== 'Done' && due < today;
+        // Effective right edge of the visible work bar — includes overdue
+        // overshoot so the chart range covers the red delay segment too
+        const rightEdge = isOverdue ? today : (completed && completed > due ? completed : due);
+        return { item: i, start, due, completed, isOverdue, rightEdge };
+      }).sort((a, b) => a.start - b.start || a.due - b.due);
+
+      // Chart date range: from earliest start to latest right-edge, padded
+      const minTs = Math.min(...rows.map(r => r.start.getTime()), today.getTime());
+      const maxTs = Math.max(...rows.map(r => r.rightEdge.getTime()), today.getTime());
+      const pad = (maxTs - minTs) * 0.04; // 4% padding each side
+      const t0 = minTs - pad;
+      const t1 = maxTs + pad;
+      const span = t1 - t0;
+
+      const pct = ts => ((ts - t0) / span) * 100;
+
+      // Date axis ticks — pick a sensible cadence based on the time span
+      const totalDays = (t1 - t0) / 86400000;
+      const tickStep = totalDays > 180 ? 'month'
+                     : totalDays > 60 ? 'biweek'
+                     : totalDays > 21 ? 'week'
+                     : 'day';
+
+      const ticks = [];
+      const cursor = new Date(t0);
+      cursor.setHours(0, 0, 0, 0);
+      // Snap cursor up to next tick boundary for cleanliness
+      if (tickStep === 'month') cursor.setDate(1);
+      while (cursor.getTime() <= t1) {
+        if (cursor.getTime() >= t0) ticks.push(new Date(cursor));
+        if (tickStep === 'month') cursor.setMonth(cursor.getMonth() + 1);
+        else if (tickStep === 'biweek') cursor.setDate(cursor.getDate() + 14);
+        else if (tickStep === 'week') cursor.setDate(cursor.getDate() + 7);
+        else cursor.setDate(cursor.getDate() + Math.max(1, Math.floor(totalDays / 10)));
+      }
+
+      const fmtTick = d => {
+        if (tickStep === 'month') return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+        return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      };
+
+      const todayPct = pct(today.getTime());
+      const todayInRange = todayPct >= 0 && todayPct <= 100;
+
+      container.innerHTML = `
+        <div class="gantt">
+          <div class="gantt-axis">
+            <div class="gantt-axis-spacer"></div>
+            <div class="gantt-axis-track">
+              ${ticks.map(d => `<span class="gantt-axis-tick" style="left:${pct(d.getTime())}%;">${fmtTick(d)}</span>`).join('')}
+            </div>
+          </div>
+          <div class="gantt-rows" style="position:relative;">
+            ${todayInRange ? `<div class="gantt-today" style="left:calc(220px + 16px + (100% - 220px - 16px) * ${todayPct / 100});"></div>` : ''}
+            ${rows.map(r => {
+              const startPct = pct(r.start.getTime());
+              const duePct = pct(r.due.getTime());
+              const widthPct = Math.max(0.5, duePct - startPct);
+              const cls = statusClass(r.item.status);
+              const bg = `var(${cls.replace('status-', '--s-')}-bg)`;
+              const isDone = r.item.status === 'Done';
+
+              // Overdue overlay: from due date to today, hatched red
+              let overdueHtml = '';
+              if (r.isOverdue) {
+                const todayBoundedPct = Math.min(100, todayPct);
+                const oWidth = Math.max(0, todayBoundedPct - duePct);
+                if (oWidth > 0) {
+                  overdueHtml = `<div class="gantt-overdue" style="left:${duePct}%;width:${oWidth}%;"></div>`;
+                }
+              }
+
+              // Completion tick (where the work was actually finished)
+              let tickHtml = '';
+              if (isDone && r.completed) {
+                tickHtml = `<div class="gantt-completion-tick" style="left:${pct(r.completed.getTime())}%;" title="Completed ${dayKey(r.completed)}"></div>`;
+              }
+
+              const titleText = escapeHtml(r.item.title);
+              return `
+                <div class="gantt-row" data-id="${r.item.id}" title="${titleText}">
+                  <div class="gantt-row-title" data-action="open">${titleText}</div>
+                  <div class="gantt-row-track">
+                    <div class="gantt-bar ${isDone ? 'done' : ''}" data-action="open"
+                         style="left:${startPct}%;width:${widthPct}%;background:${bg};"
+                         title="${escapeHtml(r.item.status)} · ${dayKey(r.start)} → ${dayKey(r.due)}"></div>
+                    ${overdueHtml}
+                    ${tickHtml}
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+          ${itemsWithoutDue > 0 ? `
+            <div class="gantt-empty-note">
+              ${itemsWithoutDue} item${itemsWithoutDue === 1 ? '' : 's'} not shown — no due date set.
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      // Click any row to open its edit modal
+      container.querySelectorAll('.gantt-row').forEach(row => {
+        row.onclick = () => {
+          const id = row.dataset.id;
+          const item = state.items.find(i => i.id === id);
+          if (item) openModal(item);
+        };
+      });
+    }
+
+    function renderItem(item) {
+      const time = getTimeStatus(item);
+      const expanded = state.expandedId === item.id;
+      const logCount = (item.log || []).length;
+      const labels = item.labels || [];
+      return `
+        <article class="item-card ${expanded ? 'expanded' : ''}" data-id="${item.id}">
+          <div class="item-header" data-action="toggle">
+            <div>
+              <div class="item-title">${escapeHtml(item.title)}</div>
+              ${labels.length > 0 ? `
+                <div class="item-labels">
+                  ${labels.map(l => `<span class="label-chip" style="${labelStyle(l)}" data-action="filter-label" data-label="${escapeHtml(l)}" title="Filter by &quot;${escapeHtml(l)}&quot;">${escapeHtml(l)}</span>`).join('')}
+                </div>
+              ` : ''}
+              <div class="item-meta">
+                <span class="item-meta-item">${escapeHtml(OWNER_DISPLAY[item.owner] || item.owner)}</span>
+                ${item.dueDate ? `<span class="item-meta-dot"></span><span class="item-meta-item">due ${formatDate(item.dueDate)}</span>` : ''}
+                ${logCount > 0 ? `<span class="item-meta-dot"></span><span class="item-meta-item">${logCount} log${logCount === 1 ? '' : 's'}</span>` : ''}
+              </div>
+            </div>
+            <span class="status-badge ${statusClass(item.status)}">${escapeHtml(item.status)}</span>
+            <span class="time-pill ${time.className}">${time.label}</span>
+            <span class="item-toggle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </span>
+          </div>
+          ${expanded ? renderItemBody(item) : ''}
+        </article>`;
+    }
+
+    function renderItemBody(item) {
+      const log = (item.log || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+      const isAddingLog = state.addingLogTo === item.id;
+      return `
+        <div class="item-body">
+          <div class="item-description ${item.description ? '' : 'empty'}">${escapeHtml(item.description) || 'No description.'}</div>
+          <div class="section-label">Activity log</div>
+          ${log.length > 0 ? `
+            <div class="log-entries">
+              ${log.map(l => `
+                <div class="log-entry">
+                  <div class="log-entry-head">
+                    <span class="log-type">${escapeHtml(l.type)}</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <span class="log-date">${formatDate(l.date)}</span>
+                      <button class="log-delete" data-action="delete-log" data-log-id="${l.id}" title="Delete entry">✕</button>
+                    </div>
+                  </div>
+                  <div class="log-content">${escapeHtml(l.content)}</div>
+                </div>`).join('')}
+            </div>` : `<div class="log-empty">No entries yet.</div>`}
+          ${isAddingLog ? `
+            <div class="log-form">
+              <div class="log-form-row">
+                <select id="log-type-${item.id}">${LOG_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
+                <input type="date" id="log-date-${item.id}" value="${new Date().toISOString().slice(0,10)}">
+              </div>
+              <textarea id="log-content-${item.id}" placeholder="What happened? (paste email summary, message, decision, etc.)"></textarea>
+              <div class="log-form-actions">
+                <button class="btn btn-ghost" data-action="cancel-log">Cancel</button>
+                <button class="btn btn-primary" data-action="save-log">Add entry</button>
+              </div>
+            </div>` : `
+            <button class="btn btn-ghost" data-action="add-log" style="margin-bottom:12px;">
+              <svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              Add log entry
+            </button>`}
+          <div class="item-actions">
+            <button class="btn btn-ghost" data-action="edit">Edit details</button>
+            ${item.status !== 'Done' ? `<button class="btn btn-ghost" data-action="mark-done">Mark as done</button>` : ''}
+            <button class="btn btn-danger" data-action="delete" style="margin-left:auto;">Delete</button>
+          </div>
+        </div>`;
+    }
+
+    function attachItemHandlers() {
+      document.querySelectorAll('.item-card').forEach(card => {
+        const id = card.dataset.id;
+        const item = state.items.find(i => i.id === id);
+        if (!item) return;
+        card.querySelectorAll('[data-action]').forEach(el => {
+          el.onclick = (e) => { e.stopPropagation(); handleItemAction(el.dataset.action, item, el); };
+        });
+      });
+    }
+
+    async function handleItemAction(action, item, el) {
+      try {
+        switch (action) {
+          case 'toggle':
+            state.expandedId = state.expandedId === item.id ? null : item.id;
+            state.addingLogTo = null;
+            renderTracker();
+            break;
+          case 'filter-label':
+            state.filterLabel = el.dataset.label;
+            saveFilterLabel();
+            renderTracker();
+            break;
+          case 'edit':
+            openModal(item);
+            break;
+          case 'delete':
+            if (confirm(`Delete "${item.title}"?\n\nThis also removes all log entries for this item.`)) {
+              await deleteItemRemote(item.id);
+              state.items = state.items.filter(i => i.id !== item.id);
+              renderTracker();
+              showToast('Item deleted');
+            }
+            break;
+          case 'mark-done': {
+            const updated = await updateItemRemote(item.id, {
+              status: 'Done',
+              completedAt: new Date().toISOString()
+            });
+            Object.assign(item, updated);
+            renderTracker();
+            showToast('Marked as done');
+            break;
+          }
+          case 'add-log':
+            state.addingLogTo = item.id;
+            renderTracker();
+            setTimeout(() => {
+              const ta = document.getElementById('log-content-' + item.id);
+              if (ta) ta.focus();
+            }, 50);
+            break;
+          case 'cancel-log':
+            state.addingLogTo = null;
+            renderTracker();
+            break;
+          case 'save-log': {
+            const type = document.getElementById('log-type-' + item.id).value;
+            const date = document.getElementById('log-date-' + item.id).value;
+            const content = document.getElementById('log-content-' + item.id).value.trim();
+            if (!content) { showToast('Please write something'); return; }
+            const newLog = [...(item.log || []), { id: uid('log'), type, date, content }];
+            const updated = await updateItemRemote(item.id, { log: newLog });
+            Object.assign(item, updated);
+            state.addingLogTo = null;
+            renderTracker();
+            showToast('Log entry added');
+            break;
+          }
+          case 'delete-log': {
+            const newLog = (item.log || []).filter(l => l.id !== el.dataset.logId);
+            const updated = await updateItemRemote(item.id, { log: newLog });
+            Object.assign(item, updated);
+            renderTracker();
+            break;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error: ' + (e.message || 'something went wrong'));
+      }
+    }
+
+    // ============================================
+    // Modal
+    // ============================================
+    function openModal(item) {
+      state.editingId = item ? item.id : null;
+      state.modalLabels = item && Array.isArray(item.labels) ? [...item.labels] : [];
+      document.getElementById('modal-title').textContent = item ? 'Edit item' : 'New item';
+      document.getElementById('f-title').value = item ? item.title : '';
+      document.getElementById('f-desc').value = item ? (item.description || '') : '';
+      document.getElementById('f-status').value = item ? item.status : 'To do';
+      document.getElementById('f-owner').value = item ? item.owner : 'Luis y Mathi';
+      document.getElementById('f-start').value = item ? (item.startDate || '') : '';
+      document.getElementById('f-due').value = item ? (item.dueDate || '') : '';
+      document.getElementById('modal-delete').style.display = item ? 'inline-flex' : 'none';
+      renderLabelsField();
+      document.getElementById('modal-backdrop').classList.add('open');
+      setTimeout(() => document.getElementById('f-title').focus(), 50);
+    }
+
+    // Render the labels editor inside the modal. Re-renders on every label
+    // add/remove so that the chips, input, and suggestion list stay consistent.
+    function renderLabelsField() {
+      const container = document.getElementById('label-input-container');
+      if (!container) return;
+      const labels = state.modalLabels || [];
+      const existing = getAllLabels();
+      const suggestions = existing.filter(l =>
+        !labels.some(x => x.toLowerCase() === l.toLowerCase())
+      ).slice(0, 8);
+
+      container.innerHTML = `
+        <div class="label-input" id="label-input-wrap">
+          ${labels.map((l, i) => `
+            <span class="label-chip removable" style="${labelStyle(l)}">
+              ${escapeHtml(l)}
+              <button type="button" class="label-chip-remove" data-label-idx="${i}" aria-label="Remove">×</button>
+            </span>`).join('')}
+          <input type="text" id="f-label-input" placeholder="${labels.length === 0 ? 'Type a label, press Enter' : ''}" autocomplete="off">
+        </div>
+        ${suggestions.length > 0 ? `
+          <div class="label-suggestions">
+            <span class="label-suggestions-label">Existing:</span>
+            ${suggestions.map(l => `
+              <button type="button" class="suggest-chip" data-suggest="${escapeHtml(l)}">${escapeHtml(l)}</button>
+            `).join('')}
+          </div>` : ''}
+      `;
+
+      const input = document.getElementById('f-label-input');
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          addLabelToModal(input.value);
+          input.value = '';
+        } else if (e.key === 'Backspace' && input.value === '' && state.modalLabels.length > 0) {
+          // Remove the last chip on backspace from an empty input — common UX pattern
+          state.modalLabels.pop();
+          renderLabelsField();
+          setTimeout(() => document.getElementById('f-label-input')?.focus(), 0);
+        }
+      };
+      // Clicking the input wrap focuses the text input — feels more like a real form field
+      document.getElementById('label-input-wrap').onclick = (e) => {
+        if (e.target.closest('button')) return;
+        input.focus();
+      };
+      container.querySelectorAll('.label-chip-remove').forEach(btn => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          const idx = parseInt(btn.dataset.labelIdx, 10);
+          state.modalLabels.splice(idx, 1);
+          renderLabelsField();
+        };
+      });
+      container.querySelectorAll('.suggest-chip').forEach(btn => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          addLabelToModal(btn.dataset.suggest);
+        };
+      });
+    }
+
+    function addLabelToModal(raw) {
+      const label = (raw || '').trim();
+      if (!label) return;
+      // Case-insensitive dedupe so "Urgent" and "urgent" aren't both stored
+      if (state.modalLabels.some(l => l.toLowerCase() === label.toLowerCase())) return;
+      state.modalLabels.push(label);
+      renderLabelsField();
+      setTimeout(() => document.getElementById('f-label-input')?.focus(), 0);
+    }
+
+    function closeModal() {
+      document.getElementById('modal-backdrop').classList.remove('open');
+      state.editingId = null;
+    }
+
+    async function saveModal() {
+      const title = document.getElementById('f-title').value.trim();
+      if (!title) { showToast('Title is required'); return; }
+
+      // Forgiveness: if there's still text typed in the label input that the user
+      // didn't press Enter on, treat it as an intent and add it before saving.
+      const pending = document.getElementById('f-label-input');
+      if (pending && pending.value.trim()) {
+        addLabelToModal(pending.value);
+        pending.value = '';
+      }
+
+      const newStatus = document.getElementById('f-status').value;
+      const wasDone = state.editingId
+        ? (state.items.find(i => i.id === state.editingId)?.status === 'Done')
+        : false;
+
+      const patch = {
+        title,
+        description: document.getElementById('f-desc').value.trim(),
+        status: newStatus,
+        owner: document.getElementById('f-owner').value,
+        startDate: document.getElementById('f-start').value || null,
+        dueDate: document.getElementById('f-due').value || null,
+        labels: [...(state.modalLabels || [])]
+      };
+
+      // Auto-manage completedAt: stamp it when transitioning to Done,
+      // clear it when transitioning out of Done. Don't touch otherwise
+      // (preserves any existing completion timestamp on no-op edits).
+      if (newStatus === 'Done' && !wasDone) {
+        patch.completedAt = new Date().toISOString();
+      } else if (newStatus !== 'Done' && wasDone) {
+        patch.completedAt = null;
+      }
+
+      try {
+        if (state.editingId) {
+          const updated = await updateItemRemote(state.editingId, patch);
+          const idx = state.items.findIndex(i => i.id === state.editingId);
+          if (idx !== -1) state.items[idx] = updated;
+        } else {
+          const created = await createItemRemote({ ...patch, log: [] });
+          state.items.push(created);
+        }
+        closeModal();
+        renderTracker();
+        showToast(state.editingId ? 'Saved' : 'Item added');
+      } catch (e) {
+        console.error(e);
+        showToast('Error: ' + (e.message || 'could not save'));
+      }
+    }
+
+    async function deleteFromModal() {
+      if (!state.editingId) return;
+      const item = state.items.find(i => i.id === state.editingId);
+      if (!item) return;
+      if (!confirm(`Delete "${item.title}"?\n\nThis also removes all log entries for this item.`)) return;
+      try {
+        await deleteItemRemote(item.id);
+        state.items = state.items.filter(i => i.id !== state.editingId);
+        closeModal();
+        renderTracker();
+        showToast('Item deleted');
+      } catch (e) {
+        console.error(e);
+        showToast('Error: ' + (e.message || 'could not delete'));
+      }
+    }
+
+    // ============================================
+    // View switching
+    // ============================================
+    function showView(name) {
+      document.getElementById('tracker-view').classList.remove('active');
+      document.getElementById('setup-view').style.display = 'none';
+      document.getElementById('conn-error').style.display = 'none';
+      if (name === 'tracker') document.getElementById('tracker-view').classList.add('active');
+      else if (name === 'error') document.getElementById('conn-error').style.display = 'block';
+      else if (name === 'setup') document.getElementById('setup-view').style.display = 'block';
+    }
+
+    function showConnError(msg) {
+      document.getElementById('conn-error-msg').textContent = msg || 'Could not reach Supabase.';
+      showView('error');
+    }
+
+    // ============================================
+    // Wire up
+    // ============================================
+    function updateSortControls() {
+      const sel = document.getElementById('sort-by');
+      const dirBtn = document.getElementById('sort-dir');
+      if (!sel || !dirBtn) return;
+      sel.value = state.sort.by;
+      dirBtn.textContent = state.sort.dir === 'desc' ? '↓' : '↑';
+      // Direction is meaningless for Smart sort
+      if (state.sort.by === 'smart') dirBtn.classList.add('hidden');
+      else dirBtn.classList.remove('hidden');
+    }
+
+    // ============================================
+    // Setup view wiring
+    // ============================================
+    function setSetupError(msg) {
+      const el = document.getElementById('setup-error');
+      if (msg) { el.textContent = msg; el.classList.add('show'); }
+      else { el.classList.remove('show'); }
+    }
+
+    async function handleConfigureClick() {
+      const url = document.getElementById('setup-url').value.trim();
+      const key = document.getElementById('setup-key').value.trim();
+      if (!url || !key) { setSetupError('Please fill in both fields.'); return; }
+      if (!/^https:\/\/.+\.supabase\.(co|in)/.test(url)) {
+        setSetupError("That doesn't look like a Supabase project URL. It should look like https://xxxx.supabase.co"); return;
+      }
+      setSetupError('');
+      const btn = document.getElementById('connect-btn');
+      btn.disabled = true;
+      btn.textContent = 'Connecting…';
+      try {
+        // Test the credentials before persisting them — so a typo doesn't
+        // get baked into localStorage and force a manual reset later.
+        const probeClient = window.supabase.createClient(url.replace(/\/+$/, ''), key, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
+        await testConnection(probeClient);
+        saveCredentials(url.replace(/\/+$/, ''), key);
+        await connect();
+      } catch (e) {
+        console.error(e);
+        setSetupError(e.message || 'Could not connect.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg> Configure';
+      }
+    }
+
+    function wireSetupView() {
+      document.getElementById('connect-btn').onclick = handleConfigureClick;
+      document.getElementById('copy-sql').onclick = async () => {
+        const sql = document.getElementById('sql-content').textContent;
+        try {
+          await navigator.clipboard.writeText(sql);
+          const btn = document.getElementById('copy-sql');
+          const orig = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => btn.textContent = orig, 1400);
+        } catch (e) {
+          showToast('Copy failed — select and copy manually');
+        }
+      };
+      document.getElementById('setup-key').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleConfigureClick();
+      });
+    }
+
+    function reconfigure() {
+      if (!confirm('Reconfigure Supabase credentials?\n\nYour data stays in Supabase — only this browser\'s saved URL and key are cleared.')) return;
+      // Tear down realtime so the next attempt starts fresh
+      if (state.realtimeChannel && state.sb) {
+        try { state.sb.removeChannel(state.realtimeChannel); } catch (e) {}
+        state.realtimeChannel = null;
+      }
+      state.sb = null;
+      state.items = [];
+      clearCredentials();
+      // Pre-fill fields with whatever was there (empty now after clear)
+      document.getElementById('setup-url').value = '';
+      document.getElementById('setup-key').value = '';
+      setSetupError('');
+      showView('setup');
+      setTimeout(() => document.getElementById('setup-url').focus(), 50);
+    }
+
+    function wireTrackerView() {
+      document.getElementById('add-btn').onclick = () => openModal(null);
+      document.getElementById('modal-close').onclick = closeModal;
+      document.getElementById('modal-cancel').onclick = closeModal;
+      document.getElementById('modal-save').onclick = saveModal;
+      document.getElementById('modal-delete').onclick = deleteFromModal;
+      document.getElementById('modal-backdrop').onclick = (e) => {
+        if (e.target.id === 'modal-backdrop') closeModal();
+      };
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+
+      // Sort controls
+      const sortBy = document.getElementById('sort-by');
+      const sortDir = document.getElementById('sort-dir');
+      sortBy.onchange = () => {
+        state.sort.by = sortBy.value;
+        // When switching to a non-smart field, default direction stays sensible
+        // (asc usually means earliest/A-Z/most-pending — handled by compareItems).
+        saveSortPref();
+        updateSortControls();
+        renderItems();
+      };
+      sortDir.onclick = () => {
+        state.sort.dir = state.sort.dir === 'asc' ? 'desc' : 'asc';
+        saveSortPref();
+        updateSortControls();
+        renderItems();
+      };
+      updateSortControls();
+
+      // View tabs (List / Dashboard)
+      document.querySelectorAll('.view-tab').forEach(b => {
+        b.onclick = () => setView(b.dataset.view);
+      });
+
+      const ind = document.getElementById('conn-indicator');
+      if (ind) {
+        ind.onclick = reconfigure;
+      }
+      const retry = document.getElementById('retry-btn');
+      if (retry) retry.onclick = () => connect();
+      const reconfBtn = document.getElementById('reconfigure-btn');
+      if (reconfBtn) reconfBtn.onclick = reconfigure;
+
+      // Refresh time pills hourly so "days left/delayed" stays current
+      setInterval(() => {
+        if (state.items.length > 0 && !state.editingId) renderItems();
+      }, 60 * 60 * 1000);
+    }
+
+    // ============================================
+    // Connect
+    // ============================================
+    async function connect() {
+      // Gate: if credentials aren't set yet, route to the setup screen.
+      // Credentials missing isn't an error — it's a first-run state.
+      if (!hasCredentials()) {
+        showView('setup');
+        setTimeout(() => document.getElementById('setup-url').focus(), 50);
+        return;
+      }
+
+      try {
+        const client = buildClient(SUPABASE_URL, SUPABASE_KEY);
+        await testConnection(client);
+        state.sb = client;
+        await fetchItems();
+        const migrated = await migrateLegacyIfPresent();
+        renderTracker();
+        // Apply the persisted view (toggles which containers are shown)
+        setView(state.view);
+        subscribeRealtime();
+        showView('tracker');
+        if (migrated > 0) showToast(`Imported ${migrated} item${migrated === 1 ? '' : 's'} from local storage`);
+      } catch (e) {
+        console.error('Connect failed:', e);
+        showConnError(e.message || 'Unknown error');
+      }
+    }
+
+    // ============================================
+    // Init
+    // ============================================
+    (async () => {
+      wireSetupView();
+      wireTrackerView();
+      await connect();
+    })();
+  </script>
+</body>
+</html>
