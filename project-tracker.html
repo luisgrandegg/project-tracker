@@ -1839,8 +1839,11 @@ create policy "allow_anon_all" on public.tracker_items
 
 alter publication supabase_realtime add table public.tracker_items;
 
--- If you already created the table before this column existed, run instead:
--- alter table public.tracker_items add column if not exists attachments jsonb default '[]'::jsonb;</code></div>
+-- If you already created the table before some of these columns existed,
+-- run these alters to bring an older table up to date (safe to re-run):
+-- alter table public.tracker_items add column if not exists start_date date;
+-- alter table public.tracker_items add column if not exists attachments jsonb default '[]'::jsonb;
+-- alter table public.tracker_items add column if not exists labels text[] default '{}';</code></div>
         </div>
       </div>
 
