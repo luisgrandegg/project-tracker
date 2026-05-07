@@ -2,6 +2,8 @@
 
 > A tiny self-hosted project tracker, built end-to-end with AI. One HTML file, your own Supabase, realtime sync.
 
+**Live:** [luisgrandegg.github.io/project-tracker](https://luisgrandegg.github.io/project-tracker/)
+
 A small project tracker designed to fit on a single page of HTML. It uses your own Supabase project as a backend, syncs in real time across devices, and ships as one file you can open in a browser, drop on a static host, or send to a collaborator.
 
 Built originally to coordinate a small house build — an architect, a foundations contractor, a prefab manufacturer, and the two owners trying to keep everyone aligned. General enough for any small project where two or three people need to share a list of who-owes-what-by-when.
@@ -57,7 +59,7 @@ This creates the table, opens it to anon access, and enables realtime updates.
 Serve `project-tracker.html` from any static host:
 
 - **Cloudflare Pages** or **Netlify** — drag-and-drop deployment, free, ~2 minutes
-- **GitHub Pages** — free, automatic HTTPS, serves the file directly from this repo
+- **GitHub Pages** — free, automatic HTTPS, serves the file directly from this repo. This repo deploys via `.github/workflows/pages.yml` to [luisgrandegg.github.io/project-tracker](https://luisgrandegg.github.io/project-tracker/)
 - **Locally** — double-click the file to open it in your browser
 
 Hosting remotely is the right move if more than one person needs access.
