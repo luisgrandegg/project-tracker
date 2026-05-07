@@ -1627,6 +1627,160 @@
     50% { opacity: 0.4; }
   }
 
+  /* Attachments (images) */
+  .attach-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .attach-grid-readonly {
+    margin-bottom: 14px;
+  }
+
+  .attach-thumb {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .attach-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    cursor: zoom-in;
+    transition: transform 0.2s ease;
+  }
+
+  .attach-thumb img:hover {
+    transform: scale(1.04);
+  }
+
+  .attach-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(26, 24, 20, 0.7);
+    color: #fdfaf3;
+    cursor: pointer;
+    font-size: 0.95rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+  }
+
+  .attach-remove:hover {
+    background: var(--accent);
+  }
+
+  .attach-add {
+    width: 88px;
+    height: 88px;
+    border-radius: 4px;
+    border: 1px dashed var(--border-strong);
+    background: var(--bg-card);
+    color: var(--ink-muted);
+    cursor: pointer;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    flex-shrink: 0;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  .attach-add:hover {
+    border-color: var(--ink-muted);
+    color: var(--ink);
+    background: var(--bg);
+  }
+
+  .attach-add-icon {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    line-height: 1;
+    font-variation-settings: "opsz" 36;
+  }
+
+  .attach-add-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .attach-hint {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  /* Lightbox image viewer */
+  .image-viewer {
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 24, 20, 0.88);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    z-index: 300;
+    cursor: zoom-out;
+  }
+
+  .image-viewer.open { display: flex; }
+
+  .image-viewer img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: var(--shadow-lg);
+    cursor: default;
+  }
+
+  .image-viewer-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(253, 250, 243, 0.12);
+    color: #fdfaf3;
+    cursor: pointer;
+    font-size: 1.4rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+  }
+
+  .image-viewer-close:hover {
+    background: rgba(253, 250, 243, 0.22);
+  }
+
   /* View switching */
   .view { display: none; }
   .view.active { display: block; }
@@ -1675,14 +1829,18 @@
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   log jsonb default '[]'::jsonb,
-  labels text[] default '{}'
+  labels text[] default '{}',
+  attachments jsonb default '[]'::jsonb
 );
 
 alter table public.tracker_items enable row level security;
 create policy "allow_anon_all" on public.tracker_items
   for all to anon, authenticated using (true) with check (true);
 
-alter publication supabase_realtime add table public.tracker_items;</code></div>
+alter publication supabase_realtime add table public.tracker_items;
+
+-- If you already created the table before this column existed, run instead:
+-- alter table public.tracker_items add column if not exists attachments jsonb default '[]'::jsonb;</code></div>
         </div>
       </div>
 
@@ -1855,6 +2013,10 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
           <label>Labels</label>
           <div id="label-input-container"></div>
         </div>
+        <div class="field">
+          <label>Images</label>
+          <div id="attachment-input-container"></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-danger" id="modal-delete" style="display:none;">Delete</button>
@@ -1991,6 +2153,7 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
       filterLabel: loadFilterLabel(),
       sort: loadSortPref(),
       modalLabels: [],
+      modalAttachments: [],
       expandedId: null,
       editingId: null,
       addingLogTo: null,
@@ -2093,7 +2256,8 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
         completedAt: row.completed_at,
         createdAt: row.created_at,
         log: Array.isArray(row.log) ? row.log : [],
-        labels: Array.isArray(row.labels) ? row.labels : []
+        labels: Array.isArray(row.labels) ? row.labels : [],
+        attachments: Array.isArray(row.attachments) ? row.attachments : []
       };
     }
 
@@ -2107,7 +2271,8 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
         start_date: item.startDate || null,
         completed_at: item.completedAt || null,
         log: item.log || [],
-        labels: item.labels || []
+        labels: item.labels || [],
+        attachments: item.attachments || []
       };
     }
 
@@ -2139,6 +2304,7 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
       if ('completedAt' in patch) row.completed_at = patch.completedAt || null;
       if ('log' in patch)         row.log = patch.log || [];
       if ('labels' in patch)      row.labels = patch.labels || [];
+      if ('attachments' in patch) row.attachments = patch.attachments || [];
       const { data, error } = await state.sb
         .from(TABLE).update(row).eq('id', id).select().single();
       if (error) throw error;
@@ -2939,6 +3105,7 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
       const time = getTimeStatus(item);
       const expanded = state.expandedId === item.id;
       const logCount = (item.log || []).length;
+      const attachCount = (item.attachments || []).length;
       const labels = item.labels || [];
       return `
         <article class="item-card ${expanded ? 'expanded' : ''}" data-id="${item.id}">
@@ -2954,6 +3121,7 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
                 <span class="item-meta-item">${escapeHtml(OWNER_DISPLAY[item.owner] || item.owner)}</span>
                 ${item.dueDate ? `<span class="item-meta-dot"></span><span class="item-meta-item">due ${formatDate(item.dueDate)}</span>` : ''}
                 ${logCount > 0 ? `<span class="item-meta-dot"></span><span class="item-meta-item">${logCount} log${logCount === 1 ? '' : 's'}</span>` : ''}
+                ${attachCount > 0 ? `<span class="item-meta-dot"></span><span class="item-meta-item">${attachCount} image${attachCount === 1 ? '' : 's'}</span>` : ''}
               </div>
             </div>
             <span class="status-badge ${statusClass(item.status)}">${escapeHtml(item.status)}</span>
@@ -2969,9 +3137,19 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
     function renderItemBody(item) {
       const log = (item.log || []).slice().sort((a, b) => b.date.localeCompare(a.date));
       const isAddingLog = state.addingLogTo === item.id;
+      const attachments = item.attachments || [];
       return `
         <div class="item-body">
           <div class="item-description ${item.description ? '' : 'empty'}">${escapeHtml(item.description) || 'No description.'}</div>
+          ${attachments.length > 0 ? `
+            <div class="section-label">Images</div>
+            <div class="attach-grid attach-grid-readonly">
+              ${attachments.map(a => `
+                <div class="attach-thumb" title="${escapeHtml(a.name)}">
+                  <img src="${a.data}" alt="${escapeHtml(a.name)}" data-action="view-image">
+                </div>`).join('')}
+            </div>
+          ` : ''}
           <div class="section-label">Activity log</div>
           ${log.length > 0 ? `
             <div class="log-entries">
@@ -3034,6 +3212,9 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
             state.filterLabel = el.dataset.label;
             saveFilterLabel();
             renderTracker();
+            break;
+          case 'view-image':
+            openImageViewer(el.src);
             break;
           case 'edit':
             openModal(item);
@@ -3101,6 +3282,7 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
     function openModal(item) {
       state.editingId = item ? item.id : null;
       state.modalLabels = item && Array.isArray(item.labels) ? [...item.labels] : [];
+      state.modalAttachments = item && Array.isArray(item.attachments) ? [...item.attachments] : [];
       document.getElementById('modal-title').textContent = item ? 'Edit item' : 'New item';
       document.getElementById('f-title').value = item ? item.title : '';
       document.getElementById('f-desc').value = item ? (item.description || '') : '';
@@ -3110,6 +3292,7 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
       document.getElementById('f-due').value = item ? (item.dueDate || '') : '';
       document.getElementById('modal-delete').style.display = item ? 'inline-flex' : 'none';
       renderLabelsField();
+      renderAttachmentsField();
       document.getElementById('modal-backdrop').classList.add('open');
       setTimeout(() => document.getElementById('f-title').focus(), 50);
     }
@@ -3187,9 +3370,154 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
       setTimeout(() => document.getElementById('f-label-input')?.focus(), 0);
     }
 
+    // ============================================
+    // Attachments (images, base64-encoded into the row)
+    // ============================================
+    // Caps. Images are stored inline in the jsonb row, so realtime payloads and
+    // the row itself grow with each one. These limits keep things sane for a
+    // 2-person tool — large enough for phone photos, small enough that Postgres
+    // and realtime don't choke.
+    const ATTACH_MAX_DIMENSION = 1600; // px on the longest edge after downscale
+    const ATTACH_MAX_BYTES = 1_500_000; // ~1.5 MB encoded ceiling per image
+    const ATTACH_JPEG_QUALITY = 0.82;
+
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error('Could not read file'));
+        r.readAsDataURL(file);
+      });
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Could not decode image'));
+        img.src = src;
+      });
+    }
+
+    // Downscale to ATTACH_MAX_DIMENSION on the longer edge, encode as JPEG.
+    // Falls back through quality steps if still over the byte ceiling.
+    async function compressImage(file) {
+      const original = await readFileAsDataURL(file);
+      // Small files: keep as-is so PNGs / screenshots aren't needlessly re-encoded
+      if (file.size <= 350_000 && original.length <= ATTACH_MAX_BYTES) {
+        return { dataUrl: original, type: file.type || 'image/jpeg' };
+      }
+      const img = await loadImage(original);
+      const longest = Math.max(img.width, img.height);
+      const scale = longest > ATTACH_MAX_DIMENSION ? ATTACH_MAX_DIMENSION / longest : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; // flatten transparency for JPEG
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Try progressively lower quality until under the ceiling
+      let quality = ATTACH_JPEG_QUALITY;
+      let dataUrl = canvas.toDataURL('image/jpeg', quality);
+      while (dataUrl.length > ATTACH_MAX_BYTES && quality > 0.4) {
+        quality -= 0.1;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+      if (dataUrl.length > ATTACH_MAX_BYTES) {
+        throw new Error('Image too large even after compression');
+      }
+      return { dataUrl, type: 'image/jpeg' };
+    }
+
+    async function handleAttachmentFiles(fileList) {
+      const files = Array.from(fileList || []).filter(f => f.type.startsWith('image/'));
+      if (files.length === 0) {
+        showToast('Pick image files only');
+        return;
+      }
+      for (const file of files) {
+        try {
+          const { dataUrl, type } = await compressImage(file);
+          state.modalAttachments.push({
+            id: uid('img'),
+            name: file.name || 'image',
+            type,
+            size: dataUrl.length,
+            data: dataUrl,
+            addedAt: new Date().toISOString()
+          });
+          renderAttachmentsField();
+        } catch (e) {
+          console.error('Attachment failed:', e);
+          showToast(`"${file.name}": ${e.message || 'could not attach'}`);
+        }
+      }
+    }
+
+    function renderAttachmentsField() {
+      const container = document.getElementById('attachment-input-container');
+      if (!container) return;
+      const items = state.modalAttachments || [];
+      container.innerHTML = `
+        <div class="attach-grid">
+          ${items.map((a, i) => `
+            <div class="attach-thumb" title="${escapeHtml(a.name)}">
+              <img src="${a.data}" alt="${escapeHtml(a.name)}">
+              <button type="button" class="attach-remove" data-attach-idx="${i}" aria-label="Remove image">×</button>
+            </div>`).join('')}
+          <label class="attach-add">
+            <input type="file" id="f-attach-input" accept="image/*" multiple style="display:none;">
+            <span class="attach-add-icon">+</span>
+            <span class="attach-add-label">Add image${items.length > 0 ? 's' : ''}</span>
+          </label>
+        </div>
+        <div class="attach-hint">Stored inline in the database. Large photos are auto-resized to ${ATTACH_MAX_DIMENSION}px.</div>
+      `;
+      const input = document.getElementById('f-attach-input');
+      input.onchange = async (e) => {
+        await handleAttachmentFiles(e.target.files);
+        input.value = ''; // allow picking the same file again
+      };
+      container.querySelectorAll('.attach-remove').forEach(btn => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          const idx = parseInt(btn.dataset.attachIdx, 10);
+          state.modalAttachments.splice(idx, 1);
+          renderAttachmentsField();
+        };
+      });
+      container.querySelectorAll('.attach-thumb img').forEach(img => {
+        img.onclick = () => openImageViewer(img.src);
+      });
+    }
+
+    // Lightbox-style image viewer. Click anywhere or press Esc to close.
+    function openImageViewer(src) {
+      let el = document.getElementById('image-viewer');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'image-viewer';
+        el.className = 'image-viewer';
+        el.innerHTML = `<img alt=""><button class="image-viewer-close" aria-label="Close">×</button>`;
+        document.body.appendChild(el);
+        const close = () => el.classList.remove('open');
+        el.onclick = (e) => { if (e.target === el || e.target.classList.contains('image-viewer-close')) close(); };
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && el.classList.contains('open')) close();
+        });
+      }
+      el.querySelector('img').src = src;
+      el.classList.add('open');
+    }
+
     function closeModal() {
       document.getElementById('modal-backdrop').classList.remove('open');
       state.editingId = null;
+      state.modalAttachments = [];
     }
 
     async function saveModal() {
@@ -3216,7 +3544,8 @@ alter publication supabase_realtime add table public.tracker_items;</code></div>
         owner: document.getElementById('f-owner').value,
         startDate: document.getElementById('f-start').value || null,
         dueDate: document.getElementById('f-due').value || null,
-        labels: [...(state.modalLabels || [])]
+        labels: [...(state.modalLabels || [])],
+        attachments: [...(state.modalAttachments || [])]
       };
 
       // Auto-manage completedAt: stamp it when transitioning to Done,

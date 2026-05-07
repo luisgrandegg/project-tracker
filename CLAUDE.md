@@ -63,7 +63,7 @@ the setup view; otherwise connects, fetches, renders, subscribes.
 
 Database schema
 Current shape of public.tracker_items:
-ColumnTypeNotesiduuid PKdefault gen_random_uuid()titletext NOT NULLdescriptiontextdefault ''statustextone of: To plan / To do / In progress / Action Required / Doneownertextone of: Damaso / Luis y Mathi / Colven / Isidorodue_datedatenullablestart_datedatenullable; used by the Ganttcompleted_attimestamptznullable; auto-managed by the client when status flips to / from Donecreated_attimestamptzdefault now()updated_attimestamptzclient sets on each updatelogjsonbarray of {id, type, date, content}labelstext[]default '{}'
+ColumnTypeNotesiduuid PKdefault gen_random_uuid()titletext NOT NULLdescriptiontextdefault ''statustextone of: To plan / To do / In progress / Action Required / Doneownertextone of: Damaso / Luis y Mathi / Colven / Isidorodue_datedatenullablestart_datedatenullable; used by the Ganttcompleted_attimestamptznullable; auto-managed by the client when status flips to / from Donecreated_attimestamptzdefault now()updated_attimestamptzclient sets on each updatelogjsonbarray of {id, type, date, content}labelstext[]default '{}'attachmentsjsonbdefault '[]'; array of {id, name, type, size, data, addedAt} where data is a base64 data URL. Images are stored inline in the row (favoring DB encoding over file hosting). Client downscales to 1600px longest edge and re-encodes to JPEG before saving.
 RLS is enabled with a single policy allow_anon_all granting full access to anon
 and authenticated roles. Realtime is enabled via
 alter publication supabase_realtime.
